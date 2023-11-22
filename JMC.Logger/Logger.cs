@@ -8,42 +8,51 @@ public class Logger
     private readonly bool Immediate;
     private readonly List<LogEntry> Logs = [];
 
-    public Logger(bool immediate = false)
+    /// <summary>
+    /// Initializes a new instance of the Logger class with optional immediate log dumping.
+    /// </summary>
+    /// <param name="immediate">Specifies whether logs should be immediately dumped upon each log entry.</param>
+public Logger(bool immediate = false)
     {
         Immediate = immediate;
 
-        SetLogPathToCurrentDirectory();
+        LogDirectoryPath = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+        LogFilePath = Path.Combine(LogDirectoryPath, "latest.log");
 
-        // Check if the log file already exists
         if (File.Exists(LogFilePath))
         {
-            // Create a timestamp for renaming the old log file
             string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-
-            // Rename the old log file with a timestamp
             string renamedLogFilePath = $"{timestamp}{Path.GetExtension(LogFilePath)}";
             File.Move(LogFilePath, renamedLogFilePath);
 
-            // Compress the old log file into .gz format
             CompressFile(renamedLogFilePath);
         }
 
         Log($"------ Log Initialized at {DateTime.Now} ------", LogLevel.Initialization, "");
     }
 
+    /// <summary>
+    /// Adds a log entry with the specified message, log level, and optional prefix to the log collection.
+    /// If Immediate is true, the log entry is immediately written to the log file.
+    /// </summary>
+    /// <param name="message">The log message to be added.</param>
+    /// <param name="logLevel">The log level of the entry (default is Info).</param>
+    /// <param name="prefix">An optional prefix for the log entry (default includes timestamp and log level).</param>
     public void Log(string message, LogLevel logLevel = LogLevel.Info, string prefix = "{DateTime.Now} [{logLevel}] - ")
     {
         string logEntry = $"{prefix}{message}";
-
         Logs.Add(new(logEntry, logLevel));
 
         if (Immediate)
             Dump();
     }
 
+    /// <summary>
+    /// Writes log entries with a minimum log level to the log file.
+    /// </summary>
+    /// <param name="minimum">Minimum log level to include in the log file.</param>
     public void Dump(LogLevel minimum = LogLevel.None)
     {
-        // Create the "logs" directory if it doesn't exist
         Directory.CreateDirectory(LogDirectoryPath);
 
         using StreamWriter logFile = File.AppendText(LogFilePath);
@@ -57,9 +66,11 @@ public class Logger
         }
     }
 
+    /// <summary>
+    /// Sets the log path to the current directory and initializes the log file.
+    /// </summary>
     public void SetLogPathToCurrentDirectory()
     {
-        // Set the log file path within the "logs" directory
         LogDirectoryPath = Path.Combine(Directory.GetCurrentDirectory(), "logs");
         LogFilePath = Path.Combine(LogDirectoryPath, "latest.log");
 
@@ -67,22 +78,21 @@ public class Logger
             : $"\n\n------ Log path changed at {DateTime.Now}  ------", LogLevel.Initialization, "");
     }
 
-
+    /// <summary>
+    /// Deletes old Gzip files in the log directory.
+    /// </summary>
     public void DeleteOldGzipFiles()
     {
         try
         {
-            // Check if the directory exists
             if (!Directory.Exists(LogDirectoryPath))
             {
                 Log($"Directory does not exist: {LogDirectoryPath}", LogLevel.Error);
                 return;
             }
 
-            // Get all Gzip files in the directory
             string[] gzipFiles = Directory.GetFiles(LogDirectoryPath, "*.gz");
 
-            // Delete each Gzip file
             foreach (string gzipFile in gzipFiles)
             {
                 File.Delete(gzipFile);
@@ -95,20 +105,19 @@ public class Logger
         }
     }
 
+    /// <summary>
+    /// Compresses a specified file using GZip compression and deletes the original file.
+    /// </summary>
+    /// <param name="filePathToCompress">The path of the file to compress.</param>
     private void CompressFile(string filePathToCompress)
     {
         using (FileStream sourceFileStream = File.OpenRead(filePathToCompress))
         {
             string compressedFilePath = Path.Combine(LogDirectoryPath, $"{filePathToCompress}.gz");
-            // Create a new .gz file with the same name
             using FileStream compressedFileStream = File.Create(compressedFilePath);
-            // Use GZipStream to compress the file
             using GZipStream compressionStream = new(compressedFileStream, CompressionMode.Compress);
-            // Copy the contents of the old log file to the compressed file
             sourceFileStream.CopyTo(compressionStream);
         }
-
-        // Delete the old log file after compression
         File.Delete(filePathToCompress);
     }
 }
