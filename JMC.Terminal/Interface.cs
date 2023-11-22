@@ -14,8 +14,6 @@ public sealed class Interface
     public static void Initialize(string[] args)
     {
         Configuration = new();
-
-        // Initialize the configuration, which may involve user input, and save to a configuration file.
         Configuration.Initialize(args);
     }
 
@@ -45,23 +43,24 @@ public sealed class Interface
         throw new NotImplementedException();
     }
 
+    /// <summary>
+    /// Initiates the JMC Compiler, displays version information, loads configuration settings,
+    /// and handles user commands in a continuous loop.
+    /// </summary>
+    /// <param name="args">Command-line arguments passed to the JMC Compiler.</param>
     private static void Start(string[] args)
     {
-        // Display JMC Compiler version and current directory information.
         PrettyPrint($" JMC Compiler {Configuration.Version}\n", Colors.Header);
         PrettyPrint($"Current Directory | {Path.GetFullPath(".")}\n", Colors.Yellow);
 
-        // Load configuration settings.
         Configuration = new();
         Configuration.Load(args);
 
-        // Display instructions based on the presence of a configuration file.
         if (Configuration.HasConfig)
             PrettyPrint("To compile, type `compile`. For help, type `help`", Colors.Info);
         else
             PrettyPrint("To setup workspace, type `config`. For help, type `help`", Colors.Info);
 
-        // Continuously handle user commands in a loop.
         while (true)
             HandleCommand(GetUserInput());
     }
@@ -96,24 +95,18 @@ public sealed class Interface
     /// <param name="isOk">A flag indicating whether the error is considered normal (true) or exceptional (false).</param>
     internal static void HandleException(Exception error, bool isOk)
     {
-        // Print a message indicating that an unexpected error caused the program to crash
         PrettyPrint("Unexpected error causes program to crash", Colors.Fail);
 
-        // Print the type and message of the exception
         PrettyPrint(error.GetType().Name, Colors.Error);
         PrettyPrint(error.Message, Colors.Fail);
 
-        // If the error is not considered normal, print the full exception details and a reporting message
         if (!isOk)
         {
             PrettyPrint(error.ToString(), Colors.Error);
             PrettyPrint("Please report this error at https://github.com/WingedSeal/jmc/issues/new/choose or https://discord.gg/PNWKpwdzD3.");
         }
 
-        // Log a critical message indicating that the program crashed
         Logger.Log("Program crashed", LogLevel.Critical);
-
-        // Request user confirmation to continue, if needed
         GetUserConfirmation("Press Enter to continue...");
     }
 
@@ -136,29 +129,24 @@ public sealed class Interface
     /// <returns>The user-entered input as a string.</returns>
     internal static string GetUserInput(string prompt = "> ", Colors color = Colors.Input)
     {
-        // Store the current console text color and
-        // set the console text color to the specified color
         ConsoleColor oldColor = Console.ForegroundColor;
         Console.ForegroundColor = (ConsoleColor)color;
-
-        // Display the prompt and retrieve the user-entered line.
         Console.Write(prompt);
         string? line = Console.ReadLine();
-
-        // Restore the original console text color.
         Console.ForegroundColor = oldColor;
 
-        // Log the user input.
         if (line is not null)
             Logger.Log($"Input from user: {line}");
 
-        // Return the user-entered input (or an empty string if null).
         return line ?? string.Empty;
     }
 
+    /// <summary>
+    /// Processes and executes a command with its arguments.
+    /// </summary>
+    /// <param name="command">The full command string to be processed.</param>
     private static void HandleCommand(string command)
     {
-        // Check if the given command is null or empty.
         if (string.IsNullOrEmpty(command)) 
             return;
 
@@ -167,10 +155,8 @@ public sealed class Interface
         string commandName = commandParts[0];
         string[] arguments = commandParts.Length > 1 ? commandParts[1..] : [];
 
-        // Attempt to retrieve the command information from the dictionary.
         if (!CommandManager.Dictionary.TryGetValue(commandName, out var commandInfo))
         {
-            // Display an error message for unrecognized commands.
             PrettyPrint("Command not recognized, try `help` for more info.", Colors.Fail);
             return;
         }
@@ -180,15 +166,14 @@ public sealed class Interface
             // Execute the command using the specified arguments.
             commandInfo.command(arguments);
         }
-        catch (ArgumentException ex)
+        // Handle any Exception thrown during command execution.
+        catch (Exception ex)
         {
-            // Handle any ArgumentException thrown during command execution.
             string errorMessage = ex.Message;
             errorMessage = errorMessage.Replace("()", " command").Replace("positional argument", "argument");
 
-            // Display the error message and usage information.
-            Console.WriteLine(errorMessage);
-            Console.WriteLine($"Usage: {commandInfo.usage}");
+            PrettyPrint(errorMessage, Colors.Fail);
+            PrettyPrint($"Usage: {commandInfo.usage}", Colors.Info);
         }
     }
 }
