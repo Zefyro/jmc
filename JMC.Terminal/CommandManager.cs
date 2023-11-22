@@ -19,36 +19,27 @@ internal static class CommandManager
             .GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .Where(method => Attribute.IsDefined(method, typeof(AddCommandAttribute)));
 
-        // Dictionary to store terminal commands.
         Dictionary<string, (Action<string[]>, string, string)> commandDictionary = [];
 
-        // Iterate over methods with the AddCommandAttribute.
         foreach (MethodInfo method in methodsWithAttribute)
         {
-            // Get the AddCommandAttribute applied to the method.
             AddCommandAttribute attribute = (AddCommandAttribute)Attribute.GetCustomAttribute(method, typeof(AddCommandAttribute))!;
 
-            // Extract information from the attribute.
             string usage = attribute.Usage;
             string name = attribute.Command ?? method.Name;
             string desc = attribute.Description;
 
-            // Create an action delegate for the method.
             Action<string[]> actionDelegate = (Action<string[]>)Delegate.CreateDelegate(typeof(Action<string[]>), Commands, method);
 
-            // Check if the key already exists before adding
             if (commandDictionary.ContainsKey(name))
             {
-                // Log a warning for duplicate keys and skip the command.
                 Interface.Logger.Log($"Duplicate key found: {name}", LogLevel.Warn);
                 continue;
             }
 
-            // Log that a terminal command has been added.
             Interface.Logger.Log($"Terminal command added: {method.Name} as {name}", LogLevel.Debug);
             Interface.Logger.Log($"Command: {name}, Usage: {usage}", LogLevel.Debug);
             
-            // Add the command to the dictionary.
             commandDictionary.Add(name, (actionDelegate, usage, desc));
         }
 

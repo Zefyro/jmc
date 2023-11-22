@@ -22,6 +22,11 @@ internal class MinecraftVersion(int major, int minor, int patch = 0)
         { new MinecraftVersion(1, 13), "4" },
     };
 
+    /// <summary>
+    /// Parses and validates the Minecraft version string and returns the corresponding pack format.
+    /// </summary>
+    /// <param name="value">The Minecraft version string to parse.</param>
+    /// <returns>The pack format string or an empty string if the version is invalid.</returns>
     internal static string GetPackFormat(string value)
     {
         if (string.IsNullOrEmpty(value))
@@ -44,7 +49,6 @@ internal class MinecraftVersion(int major, int minor, int patch = 0)
         }
 
         MinecraftVersion version;
-
 
         if (int.TryParse(split[0], out int major) 
             && int.TryParse(split[1], out int minor))
