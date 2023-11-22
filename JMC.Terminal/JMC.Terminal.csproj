@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JMC.Exceptions\JMC.Exceptions.csproj" />
+    <ProjectReference Include="..\JMC.Logger\JMC.Logging.csproj" />
+  </ItemGroup>
+
+</Project>
