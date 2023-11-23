@@ -15,7 +15,7 @@ public sealed class TerminalCommands
         if (args.Length == 0)
         {
             string availableCommands = "\n";
-            foreach (KeyValuePair<string, (Action<string[]> command, string usage, string description)> command in CommandManager.Dictionary)
+            foreach (KeyValuePair<string, (Action<string[]> command, string usage, string description)> command in CommandManager.TerminalCommands)
             {
                 availableCommands += $"- {command.Value.usage}: {command.Value.description}\n";
             }
@@ -24,7 +24,7 @@ public sealed class TerminalCommands
             return;
         }
 
-        if (!CommandManager.Dictionary.TryGetValue(args[0], out var value))
+        if (!CommandManager.TerminalCommands.TryGetValue(args[0], out var value))
         {
             Interface.PrettyPrint($"Unrecognized command '{args[0]}'", Colors.Fail);
             return;

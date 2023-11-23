@@ -71,13 +71,13 @@ public class Configuration
     /// <param name="args">Command-line arguments passed to the application.</param>
     internal void Initialize(string[] args)
     {
-        if (File.Exists(FileName))
+        if (File.Exists(FileName) && !args.Any(x => x == "--force"))
         {
             Interface.PrettyPrint($"Config file already exists: Delete {FileName} to generate it again.", Colors.Fail);
             return;
         }
 
-        Interface.PrettyPrint($"No config file found, generating {FileName}...", Colors.Info);
+        Interface.PrettyPrint($"Generating config {FileName}...", Colors.Info);
 
         // Check if any arguments are provided, if not request manual configuration, else try to configure with provided arguments
         if (args.Length == 0)
@@ -125,7 +125,7 @@ public class Configuration
 
         if (matchingProperty is null)
         {
-            Interface.PrettyPrint($"Property with JSON key '{key}' not found.", Colors.Fail);
+            Interface.Logger.Log($"Property with JSON key '{key}' not found.", Logging.LogLevel.Warn);
             return [];
         }
 
@@ -135,9 +135,31 @@ public class Configuration
         object convertedValue = Convert.ChangeType(value, matchingProperty.PropertyType)!;
         matchingProperty.SetValue(this, convertedValue);
 
-        Interface.PrettyPrint($"{key} has been set to: {matchingProperty.GetValue(this)}");
-        
+        Interface.Logger.Log($"{key} has been set to: {matchingProperty.GetValue(this)}", Logging.LogLevel.Info);
         return [];
+    }
+
+    internal static string? ValidateNamespace(string ns)
+    {
+        if (string.IsNullOrEmpty(ns))
+            return null;
+
+        if (ns.Contains(' ') || ns.Contains('\t'))
+        {
+            Interface.PrettyPrint("Invalid Namespace: Space detected.", Colors.Fail);
+            return string.Empty;
+        }
+
+        // TODO: I don't understand why you don't just make it all lowercase
+        // TODO: Fix 'k(/&&#..==pa' being valid, it should only accept lowercase letters
+        // Ensure namespace is in lowercase
+        if (!ns.Equals(ns.ToLower()))
+        {
+            Interface.PrettyPrint("Invalid Namespace: Uppercase character detected.", Colors.Fail);
+            return string.Empty;
+        }
+
+        return ns;
     }
 
     private void Configure(string[] args)
@@ -147,32 +169,19 @@ public class Configuration
 
     private void RequestConfiguration()
     {
-        string value;
+        string? value;
         // Namespace
         while (true)
         {
-            value = Interface.GetUserInput("Namespace(Leave blank to cancel): ");
+            value = ValidateNamespace(Interface.GetUserInput("Namespace(Leave blank to cancel): "));
 
-            if (string.IsNullOrEmpty(value))
+            if (value is null)
             {
                 Interface.PrettyPrint("Configuration canceled.", Colors.Fail);
                 return;
             }
-
-            if (value.Contains(' ') || value.Contains('\t'))
-            {
-                Interface.PrettyPrint("Invalid Namespace: Space detected.", Colors.Fail);
+            if (value == string.Empty)
                 continue;
-            }
-
-            // TODO: I don't understand why you don't just make it all lowercase
-            // TODO: Fix 'k(/&&#..==pa' being valid, it should only accept lowercase letters
-            // Ensure namespace is in lowercase
-            if (!value.Equals(value.ToLower()))
-            {
-                Interface.PrettyPrint("Invalid Namespace: Uppercase character detected.", Colors.Fail);
-                continue;
-            }
             break;
         }
 
@@ -197,6 +206,7 @@ public class Configuration
         while (true)
         {
             value = Interface.GetUserInput("Main JMC file(Leave blank for default[main.jmc]): ");
+            
             if (string.IsNullOrEmpty(value))
                 break;
 
@@ -213,10 +223,7 @@ public class Configuration
         }
 
         if (!File.Exists(Target))
-        {
-            FileStream fs = File.Create(Target);
-            fs.Dispose();
-        }
+            Target.CreateFile();
 
         // Output
         while (true)
@@ -228,7 +235,7 @@ public class Configuration
                 break;
             }
 
-            if (value.Any(x => x.Equals(Path.GetInvalidPathChars())))
+            if (value.Any(x => Path.GetInvalidPathChars().Contains(x)))
             {
                 Interface.PrettyPrint("Invalid path", Colors.Fail);
                 continue;

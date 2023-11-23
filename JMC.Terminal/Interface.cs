@@ -1,8 +1,9 @@
 ﻿using JMC.Exceptions;
 using JMC.Logging;
+using System.Runtime.CompilerServices;
 
 namespace JMC.Terminal;
-public sealed class Interface
+public static class Interface
 {
     internal static Logger Logger = new();
     internal static Configuration Configuration = new();
@@ -23,18 +24,55 @@ public sealed class Interface
     /// <param name="args">Command-line arguments passed to the application.</param>
     public static void Run(string[] args)
     {
-        while (true)
+        if (args.Length == 0)
         {
-            try
-            {
-                Start(args);
-            }
-            catch (Exception ex)
-            {
-                if (ex is RestartException)
-                    continue;
-                break;
-            }
+            Start([]);
+            return;
+        }
+
+        string commandName = args[0];
+        string[] arguments = args.Length > 1 ? args[1..] : [];
+
+        if (!CommandManager.CLICommands.TryGetValue(commandName, out var commandInfo))
+        {
+            Start([]);
+            return;
+        }
+
+        try
+        {
+            // Execute the command using the specified arguments.
+            commandInfo.command(arguments);
+        }
+        // Handle any Exception thrown during command execution.
+        catch (Exception ex)
+        {
+            string errorMessage = ex.Message;
+
+            PrettyPrint($"Usage: {commandInfo.usage}", Colors.Info);
+            PrettyPrint(errorMessage, Colors.Fail);
+        }
+    }
+
+    /// <summary>
+    /// Creates a file at the specified path, including necessary directories.
+    /// </summary>
+    /// <param name="filePath">The path of the file to be created.</param>
+    public static void CreateFile(this string filePath)
+    {
+        try
+        {
+            Directory.CreateDirectory(
+                string.IsNullOrEmpty(Path.GetDirectoryName(filePath))
+                    ? Directory.GetCurrentDirectory()
+                    : Path.GetDirectoryName(filePath)!);
+
+            FileStream fs = File.Create(filePath);
+            fs.Close();
+        }
+        catch (Exception ex)
+        {
+            ReportError(ex);
         }
     }
 
@@ -44,25 +82,36 @@ public sealed class Interface
     }
 
     /// <summary>
-    /// Initiates the JMC Compiler, displays version information, loads configuration settings,
-    /// and handles user commands in a continuous loop.
+    /// Starts the JMC Compiler, displaying version information, current directory, and handling user commands in a continuous loop.
     /// </summary>
-    /// <param name="args">Command-line arguments passed to the JMC Compiler.</param>
-    private static void Start(string[] args)
+    /// <param name="args">Command-line arguments passed to the program.</param>
+    internal static void Start(string[] args)
     {
-        PrettyPrint($" JMC Compiler {Configuration.Version}\n", Colors.Header);
-        PrettyPrint($"Current Directory | {Path.GetFullPath(".")}\n", Colors.Yellow);
-
-        Configuration = new();
-        Configuration.Load(args);
-
-        if (Configuration.HasConfig)
-            PrettyPrint("To compile, type `compile`. For help, type `help`", Colors.Info);
-        else
-            PrettyPrint("To setup workspace, type `config`. For help, type `help`", Colors.Info);
-
         while (true)
-            HandleCommand(GetUserInput());
+        {
+            try
+            {
+                PrettyPrint($" JMC Compiler {Configuration.Version}\n", Colors.Header);
+                PrettyPrint($"Current Directory | {Path.GetFullPath(".")}\n", Colors.Yellow);
+
+                Configuration = new();
+                Configuration.Load(args);
+
+                if (Configuration.HasConfig)
+                    PrettyPrint("To compile, type `compile`. For help, type `help`", Colors.Info);
+                else
+                    PrettyPrint("To setup workspace, type `config`. For help, type `help`", Colors.Info);
+
+                while (true)
+                    HandleCommand(GetUserInput());
+            }
+            catch (Exception ex)
+            {
+                if (ex is RestartException)
+                    continue;
+                break;
+            }
+        }
     }
 
     /// <summary>
@@ -145,9 +194,9 @@ public sealed class Interface
     /// Processes and executes a command with its arguments.
     /// </summary>
     /// <param name="command">The full command string to be processed.</param>
-    private static void HandleCommand(string command)
+    internal static void HandleCommand(string command)
     {
-        if (string.IsNullOrEmpty(command)) 
+        if (string.IsNullOrEmpty(command))
             return;
 
         // Split the command into parts, separating command name and arguments.
@@ -155,7 +204,7 @@ public sealed class Interface
         string commandName = commandParts[0];
         string[] arguments = commandParts.Length > 1 ? commandParts[1..] : [];
 
-        if (!CommandManager.Dictionary.TryGetValue(commandName, out var commandInfo))
+        if (!CommandManager.TerminalCommands.TryGetValue(commandName, out var commandInfo))
         {
             PrettyPrint("Command not recognized, try `help` for more info.", Colors.Fail);
             return;
