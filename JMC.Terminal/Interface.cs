@@ -14,7 +14,6 @@ public static class Interface
     /// <param name="args">Command-line arguments passed to the application.</param>
     public static void Initialize(string[] args)
     {
-        Configuration = new();
         Configuration.Initialize(args);
     }
 
@@ -54,28 +53,6 @@ public static class Interface
         }
     }
 
-    /// <summary>
-    /// Creates a file at the specified path, including necessary directories.
-    /// </summary>
-    /// <param name="filePath">The path of the file to be created.</param>
-    public static void CreateFile(this string filePath)
-    {
-        try
-        {
-            Directory.CreateDirectory(
-                string.IsNullOrEmpty(Path.GetDirectoryName(filePath))
-                    ? Directory.GetCurrentDirectory()
-                    : Path.GetDirectoryName(filePath)!);
-
-            FileStream fs = File.Create(filePath);
-            fs.Close();
-        }
-        catch (Exception ex)
-        {
-            ReportError(ex);
-        }
-    }
-
     internal static double Compile()
     {
         throw new NotImplementedException();
@@ -94,7 +71,6 @@ public static class Interface
                 PrettyPrint($" JMC Compiler {Configuration.Version}\n", Colors.Header);
                 PrettyPrint($"Current Directory | {Path.GetFullPath(".")}\n", Colors.Yellow);
 
-                Configuration = new();
                 Configuration.Load(args);
 
                 if (Configuration.HasConfig)
@@ -109,6 +85,9 @@ public static class Interface
             {
                 if (ex is RestartException)
                     continue;
+
+                HandleException(ex, true);
+
                 break;
             }
         }
@@ -223,6 +202,28 @@ public static class Interface
 
             PrettyPrint(errorMessage, Colors.Fail);
             PrettyPrint($"Usage: {commandInfo.usage}", Colors.Info);
+        }
+    }
+
+    /// <summary>
+    /// Creates a file at the specified path, including necessary directories.
+    /// </summary>
+    /// <param name="filePath">The path of the file to be created.</param>
+    internal static void CreateFile(this string filePath)
+    {
+        try
+        {
+            Directory.CreateDirectory(
+                string.IsNullOrEmpty(Path.GetDirectoryName(filePath))
+                    ? Directory.GetCurrentDirectory()
+                    : Path.GetDirectoryName(filePath)!);
+
+            FileStream fs = File.Create(filePath);
+            fs.Close();
+        }
+        catch (Exception ex)
+        {
+            ReportError(ex);
         }
     }
 }

@@ -42,10 +42,12 @@ public class Configuration
         if (!File.Exists(FileName))
             Initialize(args);
 
+        if (!File.Exists(FileName))
+            return;
+
         using StreamReader sr = new(FileName);
         Configuration config = JsonSerializer.Deserialize<Configuration>(sr.ReadToEnd())!;
 
-        // Populate the current configuration with values from the loaded configuration
         Namespace = config.Namespace;
         Description = config.Description;
         PackFormat = config.PackFormat;
@@ -79,7 +81,6 @@ public class Configuration
 
         Interface.PrettyPrint($"Generating config {FileName}...", Colors.Info);
 
-        // Check if any arguments are provided, if not request manual configuration, else try to configure with provided arguments
         if (args.Length == 0)
             RequestConfiguration();
         else
