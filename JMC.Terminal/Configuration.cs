@@ -140,7 +140,7 @@ public class Configuration
         return [];
     }
 
-    internal static string? ValidateNamespace(string ns)
+    internal static string? ValidateNamespace(string? ns)
     {
         if (string.IsNullOrEmpty(ns))
             return null;

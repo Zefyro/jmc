@@ -10,6 +10,7 @@ internal class MinecraftVersion(int major, int minor, int patch = 0)
 
     private static readonly Dictionary<MinecraftVersion, string> PackVersion = new()
     {
+        { new MinecraftVersion(1, 20, 3), "26" },
         { new MinecraftVersion(1, 20, 2), "18" },
         { new MinecraftVersion(1, 20), "15" },
         { new MinecraftVersion(1, 19, 4), "12" },
@@ -27,7 +28,7 @@ internal class MinecraftVersion(int major, int minor, int patch = 0)
     /// </summary>
     /// <param name="value">The Minecraft version string to parse.</param>
     /// <returns>The pack format string or an empty string if the version is invalid.</returns>
-    internal static string GetPackFormat(string value)
+    internal static string GetPackFormat(string? value)
     {
         if (string.IsNullOrEmpty(value))
             return string.Empty;

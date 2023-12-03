@@ -9,7 +9,6 @@ public class CLICommands
     [AddCommand("compile", "jmc compile", "compile")]
     public void CompileCommand(string[] args)
     {
-        Interface.Configuration = new();
         Interface.Configuration.Load([]);
         Interface.HandleCommand("compile");
     }
@@ -21,7 +20,10 @@ public class CLICommands
     [AddCommand("run", "jmc run", "start a jmc session")]
     public void RunCommand(string[] args)
     {
-        Interface.Start(args);
+        if (args.Length != 0 && args[0] != "run")
+            Interface.Run(args);
+
+        Interface.Start([]);
     }
 
     private static readonly Dictionary<string, string> InitArguments = new()
@@ -55,23 +57,8 @@ public class CLICommands
     {
         if (args.Any(x => x == "-h" || x == "--help"))
         {
-            Interface.PrettyPrint("Usage: jmc init [-h] --namespace NAMESPACE [--description DESCRIPTION] " +
-                "--packformat PACKFORMAT [--target TARGET] [--output OUTPUT] [--force]", Colors.Info);
-
-            string helpMessage = "\noptions:";
-            var groupedArguments = InitArguments.GroupBy(kvp => kvp.Value);
-
-            foreach (var group in groupedArguments)
-            {
-                helpMessage += $"\n\t";
-                foreach (var argument in group)
-                {
-                    string value = argument.Value;
-                    string key = argument.Key;
-                    helpMessage += $" {key} {(!value.StartsWith("--") ? value.ToUpper() : "")}";
-                }
-            }
-            Interface.PrettyPrint(helpMessage, Colors.Yellow);
+            PrintHelp("jmc init [-h] --namespace NAMESPACE [--description DESCRIPTION] " +
+                "--packformat PACKFORMAT [--target TARGET] [--output OUTPUT] [--force]", InitArguments);
             return;
         }
 
@@ -97,7 +84,7 @@ public class CLICommands
         {
             string arg = args[idx];
 
-            if (InitArguments.TryGetValue(arg, out string argument))
+            if (InitArguments.TryGetValue(arg, out string? argument))
             {
                 ns = argument == "namespace" || ns;
                 pf = argument == "pack_format" || pf;
@@ -133,14 +120,101 @@ public class CLICommands
         Interface.Configuration.Save();
     }
 
+    private static readonly Dictionary<string, string> ConfigArguments = new()
+    {
+        { "--help", "--help" },
+        { "-h", "--help" },
+        { "--config", "{namespace,description,pack_format,target,output}" },
+        { "-c", "{namespace,description,pack_format,target,output}" },
+        { "--value", "value" },
+        { "-v", "value" },
+    };
+
     [AddCommand("config", "jmc config [-h] --config {namespace,description,pack_format,target,output} --value VALUE", "edit configuration")]
     public void ConfigCommand(string[] args)
     {
+        if (args.Length == 0)
+        {
+            throw new ArgumentException("jmc config: error: the following arguments are required: --config/-c, --value/-v");
+        }
+
+
         if (args.Any(x => x == "-h" || x == "--help"))
         {
-            Interface.PrettyPrint("Help");
+            PrintHelp("jmc config [-h] --config {namespace,description,pack_format,target,output} --value VALUE", ConfigArguments);
             return;
         }
-        throw new NotImplementedException();
+
+        string? currentArgument = null;
+        string? configType = null;
+        string? configValue = null;
+
+        for (int idx = 0; idx < args.Length; idx++)
+        {
+            string arg = args[idx];
+
+            if (ConfigArguments.TryGetValue(arg, out string? argument))
+            {
+                currentArgument = argument;
+                continue;
+            }
+
+            if (currentArgument is null)
+                continue;
+
+            int nextArgIdx = idx + 1;
+            while (nextArgIdx < args.Length && !ConfigArguments.ContainsKey(args[nextArgIdx]))
+            {
+                arg += " " + args[nextArgIdx];
+                nextArgIdx++;
+            }
+
+            arg = arg.Trim(['"']);
+
+            if (Interface.Configuration.JsonProperty().Contains(arg) 
+                && currentArgument.StartsWith('{'))
+                configType = arg;
+            else
+                configValue = arg;
+
+            currentArgument = null;
+        }
+
+        if (configType == "pack_format")
+            configValue = MinecraftVersion.GetPackFormat(configValue);
+
+        if (configType == "namespace")
+            configValue = Configuration.ValidateNamespace(configValue);
+
+        if (string.IsNullOrEmpty(configType) || string.IsNullOrEmpty(configValue))
+        {
+            Interface.PrettyPrint("Usage: jmc config [-h] --config {namespace,description,pack_format,target,output} --value VALUE", Colors.Info);
+            Interface.PrettyPrint("Invalid config type or value.", Colors.Fail);
+            return;
+        }
+
+        Interface.Configuration.JsonProperty(configType, configValue);
+        Interface.Configuration.Save();
+        Interface.PrettyPrint("Your configuration has been saved to jmc_config.json", Colors.Info);
+    }
+
+    private static void PrintHelp(string usage, Dictionary<string, string> options)
+    {
+        Interface.PrettyPrint($"Usage: {usage}", Colors.Info);
+
+        string helpMessage = "\noptions:";
+        IEnumerable<IGrouping<string, KeyValuePair<string, string>>> groupedArguments = options.GroupBy(kvp => kvp.Value);
+
+        foreach (IGrouping<string, KeyValuePair<string, string>> group in groupedArguments)
+        {
+            helpMessage += $"\n\t";
+            foreach (var argument in group)
+            {
+                string value = argument.Value;
+                string key = argument.Key;
+                helpMessage += $" {key} {(!value.StartsWith("--") ? !value.StartsWith('{') ? value.ToUpper() : value : "")}";
+            }
+        }
+        Interface.PrettyPrint(helpMessage, Colors.Yellow);
     }
 }

@@ -29,6 +29,18 @@ public static class Interface
             return;
         }
 
+        if (args[0] == "-h" || args[0] == "--help")
+        {
+            Console.WriteLine("Help");
+            return;
+        }
+
+        if (args[0] == "-v" || args[0] == "--version")
+        {
+            PrettyPrint(Configuration.Version, Colors.Info);
+            return;
+        }
+
         string commandName = args[0];
         string[] arguments = args.Length > 1 ? args[1..] : [];
 
