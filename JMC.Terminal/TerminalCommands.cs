@@ -323,4 +323,45 @@ public sealed class TerminalCommands
     {
         Console.Clear();
     }
+
+    /// <summary>
+    /// Implements a "watch" command to start monitoring for file changes in the current project.
+    /// Automatically triggers compilation when a file with specified extensions (.jmc or .hjmc) is saved.
+    /// </summary>
+    /// <param name="args">Command arguments, if any.</param>
+    [AddCommand("watch", "watch", "Start watching for file changes in the current project and compile when a file is saved.")]
+    public void WatchCommand(string[] args)
+    {
+        string watchedFolder = Path.GetDirectoryName(Path.GetFullPath(Interface.Configuration.Target))!;
+
+        using FileSystemWatcher jmcWatcher = new(path: watchedFolder);
+        using FileSystemWatcher hjmcWatcher = new(path: watchedFolder);
+
+        jmcWatcher.Filter = "*.jmc";
+        hjmcWatcher.Filter = "*.hjmc";
+
+        jmcWatcher.Created += OnFileChanged;
+        jmcWatcher.Changed += OnFileChanged;
+        hjmcWatcher.Created += OnFileChanged;
+        hjmcWatcher.Changed += OnFileChanged;
+
+        jmcWatcher.EnableRaisingEvents = true;
+        jmcWatcher.IncludeSubdirectories = true;
+        hjmcWatcher.EnableRaisingEvents = true;
+        hjmcWatcher.IncludeSubdirectories = true;
+
+        Interface.GetUserConfirmation("Press Enter to stop...");
+        Interface.PrettyPrint("Stopping...", Colors.Info);
+    }
+
+    /// <summary>
+    /// Handles the file change event by logging the file path and triggering compilation.
+    /// </summary>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="e">FileSystemEventArgs containing information about the file change.</param>
+    private void OnFileChanged(object sender, FileSystemEventArgs e)
+    {
+        Interface.Logger.Log($"File changed: {e.FullPath}, compiling...", LogLevel.Debug);
+        CompileCommand([]);
+    }
 }
