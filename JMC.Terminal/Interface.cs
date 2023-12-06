@@ -31,7 +31,16 @@ public static class Interface
 
         if (args[0] == "-h" || args[0] == "--help")
         {
-            Console.WriteLine("Help");
+            PrettyPrint("usage: jmc [-h] [--version] {compile,run,init,config} ...", Colors.Info);
+            PrettyPrint("\nJavascript-like Minecraft Function", Colors.Header);
+            string positionalArguments = "positional arguments:\n   {compile,run,init,config}";
+
+            foreach (var command in CommandManager.CLICommands)
+                positionalArguments += $"\n      {command.Key}\t\t{command.Value.description}";
+
+            string options = "options:\n   -h, --help\t\tshow this help message and exit\n   --version, -v\tshow program's version number and exit";
+
+            PrettyPrint($"\n{positionalArguments}\n\n{options}", Colors.Yellow);
             return;
         }
 
@@ -158,7 +167,7 @@ public static class Interface
     internal static void GetUserConfirmation(string prompt, Colors color = Colors.Input)
     {
         PrettyPrint(prompt, color);
-        do { } while (Console.ReadKey().Key != ConsoleKey.Enter);
+        Console.ReadLine();
     }
 
     /// <summary>
